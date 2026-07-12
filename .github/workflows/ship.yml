@@ -1,0 +1,43 @@
+name: ship
+on:
+  repository_dispatch:
+    types: [ship]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: asas-ship
+  cancel-in-progress: false
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate site
+        env:
+          PROJECT: ${{ github.event.client_payload.project }}
+          MODE: ${{ github.event.client_payload.mode }}
+          SITE: ${{ github.event.client_payload.name }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node runner.mjs
+      - name: Commit generated site
+        run: |
+          git config user.name "asas-bot"
+          git config user.email "asas@users.noreply.github.com"
+          git add -A
+          git commit -m "ship ${{ github.event.client_payload.name }}" || echo "no changes"
+          git push || echo "push skipped"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - id: deploy
+        uses: actions/deploy-pages@v4
