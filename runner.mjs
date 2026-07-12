@@ -3,6 +3,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+if (!process.env.PROJECT || !process.env.SITE) {
+  console.log('No project payload — nothing to generate (redeploy only).');
+  process.exit(0);
+}
 const project = JSON.parse(process.env.PROJECT || '{}');
 const MODE = process.env.MODE === 'build' ? 'build' : 'scaffold';
 const SITE = (process.env.SITE || 'site').replace(/[^a-z0-9-]/gi, '') || 'site';
