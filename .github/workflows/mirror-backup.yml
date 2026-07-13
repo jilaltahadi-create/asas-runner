@@ -1,0 +1,37 @@
+name: Mirror to backup account
+
+# Real-time backup: on every push, branch/tag delete, or manual run,
+# mirror this repo to the silenthummingbird backup account.
+# Requires repo secret BACKUP_TOKEN = fine-grained PAT (silenthummingbird)
+# with Contents: Read and write on the backup repos only.
+
+on:
+  push:
+  delete:
+  workflow_dispatch:
+
+concurrency:
+  group: mirror-backup-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror push to backup
+        env:
+          SRC_TOKEN: ${{ github.token }}
+          BACKUP_TOKEN: ${{ secrets.BACKUP_TOKEN }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BACKUP_TOKEN:-}" ]; then
+            echo "::error::BACKUP_TOKEN secret is not set. Add it in repo Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          git clone --mirror \
+            "https://x-access-token:${SRC_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo.git
+          cd repo.git
+          git push --mirror \
+            "https://x-access-token:${BACKUP_TOKEN}@github.com/silenthummingbird/${REPO_NAME}.git"
+          echo "Mirrored ${GITHUB_REPOSITORY} -> silenthummingbird/${REPO_NAME}"
